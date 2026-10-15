@@ -3,10 +3,14 @@ local LocalPlayer = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 
+--// 0. Restricted PlaceId Check
+if game.PlaceId ~= 93978595733734 then return end
+
 local Invisible = nil
 local invis_on = false
 local invisGui = nil
 local invisLoading = true
+local isLocked = false -- สถานะการล็อคการลาก
 
 --// 1. Function: Clean up API
 local function forceCleanupInvisible()
@@ -58,7 +62,7 @@ local function setInvisibleState(state)
     updateInvisButton()
 end
 
---// 4. Function: Create Toggle Button (Floating)
+--// 4. Function: Create Toggle Button & Lock Button
 local function createInvisButton()
     if CoreGui:FindFirstChild("InvisButtonGui") then CoreGui:FindFirstChild("InvisButtonGui"):Destroy() end
 
@@ -67,10 +71,11 @@ local function createInvisButton()
     gui.ResetOnSpawn = false
     gui.Parent = CoreGui
 
+    -- Main Toggle Button (Positioned at Top-Center)
     local btn = Instance.new("TextButton")
     btn.Name = "InvisButton"
     btn.Size = UDim2.fromOffset(130, 35)
-    btn.Position = UDim2.new(0.5, -65, 0.9, 0)
+    btn.Position = UDim2.new(0.5, -65, 0.05, 0) -- ย้ายขึ้นด้านบนตรงกลาง
     btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     btn.Text = "INVISIBLE: OFF"
     btn.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -83,9 +88,27 @@ local function createInvisButton()
     stroke.Color = Color3.fromRGB(60, 60, 60)
     stroke.Thickness = 1.5
 
-    -- Dragging Logic
+    -- Fixed Lock Button (Bottom Right - Non-draggable)
+    local lockBtn = Instance.new("TextButton")
+    lockBtn.Name = "LockButton"
+    lockBtn.Size = UDim2.fromOffset(100, 35)
+    lockBtn.Position = UDim2.new(1, -110, 1, -45) -- มุมขวาล่าง
+    lockBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    lockBtn.Text = "LOCK DRAG: OFF"
+    lockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lockBtn.Font = Enum.Font.GothamBold
+    lockBtn.TextSize = 10
+    lockBtn.Parent = gui
+
+    Instance.new("UICorner", lockBtn).CornerRadius = UDim.new(0, 8)
+    local lockStroke = Instance.new("UIStroke", lockBtn)
+    lockStroke.Color = Color3.fromRGB(80, 80, 80)
+    lockStroke.Thickness = 1.5
+
+    -- Dragging Logic with Lock Support
     local dragging, dragStart, startPos
     btn.InputBegan:Connect(function(input)
+        if isLocked then return end -- ถ้าล็อคอยู่จะลากไม่ได้
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
@@ -95,10 +118,25 @@ local function createInvisButton()
             end)
         end
     end)
+
     UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        if dragging and not isLocked and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - dragStart
             btn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    -- Toggle Lock Event
+    lockBtn.MouseButton1Click:Connect(function()
+        isLocked = not isLocked
+        if isLocked then
+            lockBtn.Text = "LOCK DRAG: ON"
+            lockBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+            lockStroke.Color = Color3.fromRGB(255, 100, 100)
+        else
+            lockBtn.Text = "LOCK DRAG: OFF"
+            lockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            lockStroke.Color = Color3.fromRGB(80, 80, 80)
         end
     end)
 
@@ -123,14 +161,14 @@ local function loadInvisibleAPI()
     createInvisButton()
 end
 
---// 6. UI Question: Do you need Invisible?
+--// 6. UI Question (Positioned at Top)
 local function askUser()
     local promptGui = Instance.new("ScreenGui", CoreGui)
     promptGui.Name = "InvisPrompt"
 
     local frame = Instance.new("Frame", promptGui)
     frame.Size = UDim2.fromOffset(250, 120)
-    frame.Position = UDim2.new(0.5, -125, 0.5, -60)
+    frame.Position = UDim2.new(0.5, -125, 0.15, 0) -- ย้ายขึ้นด้านบน
     frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     Instance.new("UICorner", frame)
 
@@ -167,8 +205,8 @@ local function askUser()
     end)
 end
 
--- Start Execution
 askUser()
+
 
 
 --[[ v1.0.0 https://wearedevs.net/obfuscator ]]
