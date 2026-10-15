@@ -3,209 +3,209 @@ local LocalPlayer = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 
---// 0. Restricted PlaceId Check
-if game.PlaceId ~= 93978595733734 then return end
+--// 0. Restricted PlaceId Check (Wrapped in IF to prevent stopping other scripts)
+if game.PlaceId == 93978595733734 then
+    local Invisible = nil
+    local invis_on = false
+    local invisGui = nil
+    local invisLoading = true
+    local isLocked = false 
 
-local Invisible = nil
-local invis_on = false
-local invisGui = nil
-local invisLoading = true
-local isLocked = false -- สถานะการล็อคการลาก
-
---// 1. Function: Clean up API
-local function forceCleanupInvisible()
-    pcall(function()
-        local chair = workspace:FindFirstChild("invischair")
-        if chair then chair:Destroy() end
-        local char = LocalPlayer.Character
-        if char then
-            for _, part in pairs(char:GetDescendants()) do
-                if part:IsA("BasePart") or part:IsA("Decal") then
-                    if part.Name ~= "Hurtbox" and part.Name ~= "HumanoidRootPart" and part.Name ~= "HRP_Clone" then
-                        part.Transparency = 0
+    --// 1. Function: Clean up API
+    local function forceCleanupInvisible()
+        pcall(function()
+            local chair = workspace:FindFirstChild("invischair")
+            if chair then chair:Destroy() end
+            local char = LocalPlayer.Character
+            if char then
+                for _, part in pairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") or part:IsA("Decal") then
+                        if part.Name ~= "Hurtbox" and part.Name ~= "HumanoidRootPart" and part.Name ~= "HRP_Clone" then
+                            part.Transparency = 0
+                        end
                     end
                 end
             end
+        end)
+    end
+
+    --// 2. Function: Update Button State
+    local function updateInvisButton()
+        if not invisGui then return end
+        local btn = invisGui:FindFirstChild("InvisButton")
+        if not btn then return end
+        local stroke = btn:FindFirstChildOfClass("UIStroke")
+
+        if invis_on then
+            btn.Text = "INVISIBLE: ON"
+            btn.TextColor3 = Color3.fromRGB(0, 255, 127)
+            if stroke then stroke.Color = Color3.fromRGB(0, 255, 127) end
+        else
+            btn.Text = "INVISIBLE: OFF"
+            btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            if stroke then stroke.Color = Color3.fromRGB(60, 60, 60) end
         end
-    end)
-end
+    end
 
---// 2. Function: Update Button State
-local function updateInvisButton()
-    if not invisGui then return end
-    local btn = invisGui:FindFirstChild("InvisButton")
-    if not btn then return end
-    local stroke = btn:FindFirstChildOfClass("UIStroke")
+    --// 3. Function: Toggle Invisible Logic
+    local function setInvisibleState(state)
+        if not Invisible then return end
+        invis_on = state
+        if state then
+            local ok, err = pcall(function() Invisible.enable() end)
+            if not ok then forceCleanupInvisible() end
+        else
+            pcall(function() Invisible.disable() end)
+            forceCleanupInvisible()
+        end
+        updateInvisButton()
+    end
 
-    if invis_on then
-        btn.Text = "INVISIBLE: ON"
-        btn.TextColor3 = Color3.fromRGB(0, 255, 127)
-        if stroke then stroke.Color = Color3.fromRGB(0, 255, 127) end
-    else
+    --// 4. Function: Create Toggle Button & Lock Button
+    local function createInvisButton()
+        if CoreGui:FindFirstChild("InvisButtonGui") then CoreGui:FindFirstChild("InvisButtonGui"):Destroy() end
+
+        local gui = Instance.new("ScreenGui")
+        gui.Name = "InvisButtonGui"
+        gui.ResetOnSpawn = false
+        gui.Parent = CoreGui
+
+        local btn = Instance.new("TextButton")
+        btn.Name = "InvisButton"
+        btn.Size = UDim2.fromOffset(130, 35)
+        btn.Position = UDim2.new(0.5, -65, 0.05, 0)
+        btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
         btn.Text = "INVISIBLE: OFF"
         btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-        if stroke then stroke.Color = Color3.fromRGB(60, 60, 60) end
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 12
+        btn.Parent = gui
+
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+        local stroke = Instance.new("UIStroke", btn)
+        stroke.Color = Color3.fromRGB(60, 60, 60)
+        stroke.Thickness = 1.5
+
+        -- ปรับเป็นสี่เหลี่ยมจตุรัส (30x30)
+        local lockBtn = Instance.new("TextButton")
+        lockBtn.Name = "LockButton"
+        lockBtn.Size = UDim2.fromOffset(30, 30)
+        lockBtn.Position = UDim2.new(1, -40, 1, -40) 
+        lockBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        lockBtn.Text = "🔓"
+        lockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        lockBtn.Font = Enum.Font.GothamBold
+        lockBtn.TextSize = 14
+        lockBtn.Parent = gui
+
+        Instance.new("UICorner", lockBtn).CornerRadius = UDim.new(0, 6)
+        local lockStroke = Instance.new("UIStroke", lockBtn)
+        lockStroke.Color = Color3.fromRGB(80, 80, 80)
+        lockStroke.Thickness = 1.5
+
+        local dragging, dragStart, startPos
+        btn.InputBegan:Connect(function(input)
+            if isLocked then return end
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStart = input.Position
+                startPos = btn.Position
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then dragging = false end
+                end)
+            end
+        end)
+
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and not isLocked and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local delta = input.Position - dragStart
+                btn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            end
+        end)
+
+        lockBtn.MouseButton1Click:Connect(function()
+            isLocked = not isLocked
+            if isLocked then
+                lockBtn.Text = "🔒"
+                lockBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+                lockStroke.Color = Color3.fromRGB(255, 100, 100)
+            else
+                lockBtn.Text = "🔓"
+                lockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                lockStroke.Color = Color3.fromRGB(80, 80, 80)
+            end
+        end)
+
+        btn.MouseButton1Click:Connect(function()
+            if not invisLoading then setInvisibleState(not invis_on) end
+        end)
+
+        invisGui = gui
     end
-end
 
---// 3. Function: Toggle Invisible Logic
-local function setInvisibleState(state)
-    if not Invisible then return end
-    invis_on = state
-    if state then
-        local ok, err = pcall(function() Invisible.enable() end)
-        if not ok then forceCleanupInvisible() end
-    else
-        pcall(function() Invisible.disable() end)
-        forceCleanupInvisible()
+    --// 5. Function: Load Invisible API
+    local function loadInvisibleAPI()
+        task.spawn(function()
+            if not _G.MengHub or not _G.MengHub.Invisible then
+                pcall(function()
+                    loadstring(game:HttpGet("https://leekguy.vercel.app/roblox/menghub/crack_obf_invisible_93978595733734.lua"))()
+                end)
+            end
+            Invisible = _G.MengHub and _G.MengHub.Invisible
+            invisLoading = false
+        end)
+        createInvisButton()
     end
-    updateInvisButton()
+
+    --// 6. UI Question
+    local function askUser()
+        local promptGui = Instance.new("ScreenGui", CoreGui)
+        promptGui.Name = "InvisPrompt"
+
+        local frame = Instance.new("Frame", promptGui)
+        frame.Size = UDim2.fromOffset(250, 120)
+        frame.Position = UDim2.new(0.5, -125, 0.15, 0)
+        frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        Instance.new("UICorner", frame)
+
+        local label = Instance.new("TextLabel", frame)
+        label.Size = UDim2.new(1, 0, 0.5, 0)
+        label.Text = "Do you need Invisible?"
+        label.TextColor3 = Color3.new(1, 1, 1)
+        label.BackgroundTransparency = 1
+        label.Font = Enum.Font.GothamBold
+
+        local yes = Instance.new("TextButton", frame)
+        yes.Size = UDim2.new(0.4, 0, 0.3, 0)
+        yes.Position = UDim2.new(0.1, 0, 0.6, 0)
+        yes.Text = "Yes"
+        yes.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        yes.TextColor3 = Color3.new(1, 1, 1)
+        Instance.new("UICorner", yes)
+
+        local no = Instance.new("TextButton", frame)
+        no.Size = UDim2.new(0.4, 0, 0.3, 0)
+        no.Position = UDim2.new(0.5, 0, 0.6, 0)
+        no.Text = "No"
+        no.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+        no.TextColor3 = Color3.new(1, 1, 1)
+        Instance.new("UICorner", no)
+
+        yes.MouseButton1Click:Connect(function()
+            promptGui:Destroy()
+            loadInvisibleAPI()
+        end)
+
+        no.MouseButton1Click:Connect(function()
+            promptGui:Destroy()
+        end)
+    end
+
+    askUser()
 end
 
---// 4. Function: Create Toggle Button & Lock Button
-local function createInvisButton()
-    if CoreGui:FindFirstChild("InvisButtonGui") then CoreGui:FindFirstChild("InvisButtonGui"):Destroy() end
+-- สคริปต์อื่นรันต่อตรงนี้ได้ปกติ
 
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "InvisButtonGui"
-    gui.ResetOnSpawn = false
-    gui.Parent = CoreGui
-
-    -- Main Toggle Button (Positioned at Top-Center)
-    local btn = Instance.new("TextButton")
-    btn.Name = "InvisButton"
-    btn.Size = UDim2.fromOffset(130, 35)
-    btn.Position = UDim2.new(0.5, -65, 0.05, 0) -- ย้ายขึ้นด้านบนตรงกลาง
-    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    btn.Text = "INVISIBLE: OFF"
-    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 12
-    btn.Parent = gui
-
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-    local stroke = Instance.new("UIStroke", btn)
-    stroke.Color = Color3.fromRGB(60, 60, 60)
-    stroke.Thickness = 1.5
-
-    -- Fixed Lock Button (Bottom Right - Non-draggable)
-    local lockBtn = Instance.new("TextButton")
-    lockBtn.Name = "LockButton"
-    lockBtn.Size = UDim2.fromOffset(100, 35)
-    lockBtn.Position = UDim2.new(1, -110, 1, -45) -- มุมขวาล่าง
-    lockBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    lockBtn.Text = "LOCK DRAG: OFF"
-    lockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    lockBtn.Font = Enum.Font.GothamBold
-    lockBtn.TextSize = 10
-    lockBtn.Parent = gui
-
-    Instance.new("UICorner", lockBtn).CornerRadius = UDim.new(0, 8)
-    local lockStroke = Instance.new("UIStroke", lockBtn)
-    lockStroke.Color = Color3.fromRGB(80, 80, 80)
-    lockStroke.Thickness = 1.5
-
-    -- Dragging Logic with Lock Support
-    local dragging, dragStart, startPos
-    btn.InputBegan:Connect(function(input)
-        if isLocked then return end -- ถ้าล็อคอยู่จะลากไม่ได้
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = btn.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
-        end
-    end)
-
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and not isLocked and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            btn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-
-    -- Toggle Lock Event
-    lockBtn.MouseButton1Click:Connect(function()
-        isLocked = not isLocked
-        if isLocked then
-            lockBtn.Text = "LOCK DRAG: ON"
-            lockBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-            lockStroke.Color = Color3.fromRGB(255, 100, 100)
-        else
-            lockBtn.Text = "LOCK DRAG: OFF"
-            lockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            lockStroke.Color = Color3.fromRGB(80, 80, 80)
-        end
-    end)
-
-    btn.MouseButton1Click:Connect(function()
-        if not invisLoading then setInvisibleState(not invis_on) end
-    end)
-
-    invisGui = gui
-end
-
---// 5. Function: Load Invisible API
-local function loadInvisibleAPI()
-    task.spawn(function()
-        if not _G.MengHub or not _G.MengHub.Invisible then
-            pcall(function()
-                loadstring(game:HttpGet("https://leekguy.vercel.app/roblox/menghub/crack_obf_invisible_93978595733734.lua"))()
-            end)
-        end
-        Invisible = _G.MengHub and _G.MengHub.Invisible
-        invisLoading = false
-    end)
-    createInvisButton()
-end
-
---// 6. UI Question (Positioned at Top)
-local function askUser()
-    local promptGui = Instance.new("ScreenGui", CoreGui)
-    promptGui.Name = "InvisPrompt"
-
-    local frame = Instance.new("Frame", promptGui)
-    frame.Size = UDim2.fromOffset(250, 120)
-    frame.Position = UDim2.new(0.5, -125, 0.15, 0) -- ย้ายขึ้นด้านบน
-    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    Instance.new("UICorner", frame)
-
-    local label = Instance.new("TextLabel", frame)
-    label.Size = UDim2.new(1, 0, 0.5, 0)
-    label.Text = "Do you need Invisible?"
-    label.TextColor3 = Color3.new(1, 1, 1)
-    label.BackgroundTransparency = 1
-    label.Font = Enum.Font.GothamBold
-
-    local yes = Instance.new("TextButton", frame)
-    yes.Size = UDim2.new(0.4, 0, 0.3, 0)
-    yes.Position = UDim2.new(0.1, 0, 0.6, 0)
-    yes.Text = "Yes"
-    yes.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-    yes.TextColor3 = Color3.new(1, 1, 1)
-    Instance.new("UICorner", yes)
-
-    local no = Instance.new("TextButton", frame)
-    no.Size = UDim2.new(0.4, 0, 0.3, 0)
-    no.Position = UDim2.new(0.5, 0, 0.6, 0)
-    no.Text = "No"
-    no.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-    no.TextColor3 = Color3.new(1, 1, 1)
-    Instance.new("UICorner", no)
-
-    yes.MouseButton1Click:Connect(function()
-        promptGui:Destroy()
-        loadInvisibleAPI()
-    end)
-
-    no.MouseButton1Click:Connect(function()
-        promptGui:Destroy()
-    end)
-end
-
-askUser()
 
 
 
