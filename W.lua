@@ -2,7 +2,8 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
-local LogService = game:GetService("LogService")
+local LogService = game:GetService("LogService") -- เพิ่ม Service สำหรับตรวจจับ Console
+-- ควยไร
 
 --// 0. Restricted PlaceId Check
 if game.PlaceId == 93978595733734 then
@@ -11,7 +12,7 @@ if game.PlaceId == 93978595733734 then
     local invisGui = nil
     local invisLoading = true
     local isLocked = false 
-    local triggered = false -- ป้องกันการรันซ้ำ
+    local triggered = false -- ป้องกันการเด้งถามซ้ำ
 
     --// 1. Function: Clean up API
     local function forceCleanupInvisible()
@@ -202,7 +203,7 @@ if game.PlaceId == 93978595733734 then
         end)
     end
 
-    --// 7. Detection Logic
+    --// 7. Event Listener: ตรวจจับ Console Message
     LogService.MessageOut:Connect(function(message, messageType)
         if not triggered and message:find("Executing Main…") then
             triggered = true
@@ -210,6 +211,7 @@ if game.PlaceId == 93978595733734 then
         end
     end)
 end
+
 
 
 
