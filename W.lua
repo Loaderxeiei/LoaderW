@@ -2,14 +2,16 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
+local LogService = game:GetService("LogService")
 
---// 0. Restricted PlaceId Check (Wrapped in IF to prevent stopping other scripts)
+--// 0. Restricted PlaceId Check
 if game.PlaceId == 93978595733734 then
     local Invisible = nil
     local invis_on = false
     local invisGui = nil
     local invisLoading = true
     local isLocked = false 
+    local triggered = false -- ป้องกันการรันซ้ำ
 
     --// 1. Function: Clean up API
     local function forceCleanupInvisible()
@@ -86,7 +88,6 @@ if game.PlaceId == 93978595733734 then
         stroke.Color = Color3.fromRGB(60, 60, 60)
         stroke.Thickness = 1.5
 
-        -- ปรับเป็นสี่เหลี่ยมจตุรัส (30x30)
         local lockBtn = Instance.new("TextButton")
         lockBtn.Name = "LockButton"
         lockBtn.Size = UDim2.fromOffset(30, 30)
@@ -201,10 +202,14 @@ if game.PlaceId == 93978595733734 then
         end)
     end
 
-    askUser()
+    --// 7. Detection Logic
+    LogService.MessageOut:Connect(function(message, messageType)
+        if not triggered and message:find("Executing Main…") then
+            triggered = true
+            askUser()
+        end
+    end)
 end
-
--- สคริปต์อื่นรันต่อตรงนี้ได้ปกติ
 
 
 
