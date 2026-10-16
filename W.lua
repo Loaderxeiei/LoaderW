@@ -3,7 +3,7 @@ local LocalPlayer = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local LogService = game:GetService("LogService") -- เพิ่ม Service สำหรับตรวจจับ Console
--- ควยไร
+-- ควยไร2
 
 --// 0. Restricted PlaceId Check
 if game.PlaceId == 93978595733734 then
@@ -205,7 +205,7 @@ if game.PlaceId == 93978595733734 then
 
     --// 7. Event Listener: ตรวจจับ Console Message
     LogService.MessageOut:Connect(function(message, messageType)
-        if not triggered and message:find("Executing Main…") then
+        if not triggered and message:find("Reaper Hub Loaded") then
             triggered = true
             askUser()
         end
