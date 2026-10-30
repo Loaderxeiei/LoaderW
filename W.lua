@@ -1,5 +1,4 @@
---[[ v1.0.0 https://wearedevs.net/obfuscator ]]
--- This file was protected using Luraph Obfuscator v15.0 [https://wearenoob.xxx/]
+--[[
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
@@ -400,7 +399,7 @@ if game.PlaceId == 93978595733734 then
         -- Preserve the original behavior outside PC Mode
         askUser()
     end
-end
+end ]]
 -- This file was protected using Luraph Obfuscator v15.0 [https://lura.ph/]
 --[[ v1.0.0 https://wearedevs.net/obfuscator ]]
 -- This script was generated using MoonVeil 2.1.0 [https://moonveil.cc]
